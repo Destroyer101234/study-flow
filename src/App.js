@@ -19,7 +19,7 @@ import {
     updateDoc, 
     deleteDoc 
 } from 'firebase/firestore';
-import { Book, Mail, AtSign, Loader, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Book, Mail, AtSign, Loader, LogOut, ChevronLeft, ChevronRight, PlusCircle, CheckCircle, Circle } from 'lucide-react';
 
 // Firebase configuration provided by the user
 const firebaseConfig = {
@@ -402,13 +402,15 @@ const appCss = `
         padding: 2rem;
         background-color: var(--dark-bg);
         min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
     }
     
     .dashboard-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
     }
     
     .dashboard-title {
@@ -431,18 +433,36 @@ const appCss = `
         border-radius: 0.5rem;
         cursor: pointer;
         transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
     .sign-out-button:hover {
         background-color: var(--lime-green);
         color: var(--dark-bg);
     }
+
+    /* Main Dashboard Layout */
+    .dashboard-main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    @media (min-width: 1024px) {
+        .dashboard-main-content {
+            flex-direction: row;
+            gap: 2rem;
+        }
+    }
     
     /* Calendar styles */
     .calendar-container {
+        flex: 1;
         max-width: 800px;
-        margin: 2rem auto;
-        padding: 1rem;
+        width: 100%;
+        padding: 1.5rem;
         background-color: var(--subtle-blue);
         border-radius: 1rem;
         box-shadow: 0 10px 30px rgba(0,0,0,0.3);
@@ -495,11 +515,12 @@ const appCss = `
         justify-content: center;
         border-radius: 0.5rem;
         cursor: pointer;
-        transition: background-color 0.2s;
+        transition: background-color 0.2s, transform 0.2s;
     }
 
     .calendar-day-cell:not(.empty-day):hover {
         background-color: rgba(190, 242, 100, 0.1);
+        transform: scale(1.05);
     }
     
     .calendar-day-cell.today {
@@ -508,9 +529,118 @@ const appCss = `
         font-weight: bold;
     }
 
+    .calendar-day-cell.selected {
+        background-color: var(--lime-green);
+        color: var(--dark-blue);
+        font-weight: bold;
+        box-shadow: 0 0 0 3px var(--lime-green);
+    }
+
+    .calendar-day-cell.today.selected {
+        background-color: var(--lime-green);
+        color: var(--dark-blue);
+        font-weight: bold;
+        box-shadow: 0 0 0 3px var(--lime-green);
+    }
+
     .calendar-day-cell.empty-day {
         background-color: transparent;
         cursor: default;
+    }
+    
+    /* Task Panel Styles */
+    .tasks-panel {
+        flex: 1;
+        max-width: 400px;
+        width: 100%;
+        padding: 1.5rem;
+        background-color: var(--subtle-blue);
+        border-radius: 1rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tasks-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .tasks-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--lime-green);
+    }
+
+    .new-task-button {
+        background-color: var(--lime-green);
+        color: var(--dark-blue);
+        font-weight: bold;
+        padding: 0.5rem 1rem;
+        border-radius: 9999px;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: transform 0.2s, background-color 0.2s;
+    }
+
+    .new-task-button:hover {
+        transform: scale(1.05);
+        background-color: white;
+    }
+
+    .task-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        flex-grow: 1;
+    }
+
+    .task-item {
+        display: flex;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+
+    .task-item:hover {
+        transform: translateX(5px);
+    }
+
+    .task-checkbox {
+        color: var(--lime-green);
+        margin-right: 1rem;
+        cursor: pointer;
+    }
+
+    .task-checkbox:hover {
+        transform: scale(1.1);
+    }
+
+    .task-text {
+        flex-grow: 1;
+        font-size: 1rem;
+    }
+
+    .task-text.completed {
+        text-decoration: line-through;
+        color: var(--light-text);
+        opacity: 0.6;
+    }
+    
+    .empty-state {
+        text-align: center;
+        color: var(--light-text);
+        font-style: italic;
+        margin-top: 2rem;
     }
 
     /* Keyframe Animations */
@@ -791,7 +921,7 @@ const AuthUI = ({ isOpen, onClose }) => {
 };
 
 // Calendar Component
-const Calendar = () => {
+const Calendar = ({ selectedDate, onDateClick }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const daysInMonth = (year, month) => {
@@ -808,8 +938,6 @@ const Calendar = () => {
         const numDays = daysInMonth(year, month);
         const firstDay = firstDayOfMonth(year, month);
         const today = new Date();
-        const todayMonth = today.getMonth();
-        const todayYear = today.getFullYear();
 
         const days = [];
 
@@ -820,13 +948,19 @@ const Calendar = () => {
 
         // Add the days of the month
         for (let day = 1; day <= numDays; day++) {
-            const isToday = day === today.getDate() && month === todayMonth && year === todayYear;
+            const date = new Date(year, month, day);
+            const isToday = date.toDateString() === today.toDateString();
+            const isSelected = selectedDate.toDateString() === date.toDateString();
+            
+            let classes = "calendar-day-cell";
+            if (isToday) classes += " today";
+            if (isSelected) classes += " selected";
+            
             days.push(
                 <div 
                     key={day} 
-                    className={`calendar-day-cell ${isToday ? 'today' : ''}`}
-                    // This is a placeholder for future functionality like selecting a date
-                    onClick={() => console.log(`Clicked on ${year}-${month + 1}-${day}`)}
+                    className={classes}
+                    onClick={() => onDateClick(date)}
                 >
                     {day}
                 </div>
@@ -864,8 +998,61 @@ const Calendar = () => {
     );
 };
 
+// Task Panel Component
+const TasksPanel = ({ selectedDate }) => {
+    // Placeholder tasks - we'll connect this to a database later
+    const tasks = [
+        { id: 1, text: "Finish React app code", completed: true, date: new Date(2025, 7, 3) },
+        { id: 2, text: "Review Firebase authentication logic", completed: false, date: new Date(2025, 7, 3) },
+        { id: 3, text: "Write report on project progress", completed: false, date: new Date(2025, 7, 4) },
+        { id: 4, text: "Prepare presentation slides", completed: false, date: new Date(2025, 7, 5) },
+    ];
+
+    // Filter tasks for the selected date
+    const formattedSelectedDate = selectedDate.toDateString();
+    const tasksForSelectedDay = tasks.filter(task => task.date.toDateString() === formattedSelectedDate);
+
+    const formattedDateHeader = selectedDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    return (
+        <div className="tasks-panel">
+            <div className="tasks-header">
+                <h3 className="tasks-title">{formattedDateHeader}</h3>
+                <button className="new-task-button" onClick={() => console.log('New Task button clicked!')}>
+                    <PlusCircle size={20} /> New Task
+                </button>
+            </div>
+            <ul className="task-list">
+                {tasksForSelectedDay.length > 0 ? (
+                    tasksForSelectedDay.map(task => (
+                        <li key={task.id} className="task-item">
+                            {task.completed ? (
+                                <CheckCircle size={24} className="task-checkbox" />
+                            ) : (
+                                <Circle size={24} className="task-checkbox" />
+                            )}
+                            <span className={`task-text ${task.completed ? 'completed' : ''}`}>
+                                {task.text}
+                            </span>
+                        </li>
+                    ))
+                ) : (
+                    <p className="empty-state">No tasks scheduled for this day.</p>
+                )}
+            </ul>
+        </div>
+    );
+};
+
 // Dashboard Placeholder Component
 const Dashboard = ({ user }) => {
+    // State to hold the currently selected date, defaults to today
+    const [selectedDate, setSelectedDate] = useState(new Date());
+
     return (
         <div className="dashboard-container">
             <header className="dashboard-header">
@@ -878,10 +1065,17 @@ const Dashboard = ({ user }) => {
                 </div>
             </header>
             
-            <Calendar />
+            <div className="dashboard-main-content">
+                <Calendar 
+                    selectedDate={selectedDate} 
+                    onDateClick={setSelectedDate} 
+                />
+                <TasksPanel selectedDate={selectedDate} />
+            </div>
             
         </div>
     );
 };
 
 export default App;
+
