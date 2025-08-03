@@ -19,7 +19,7 @@ import {
     updateDoc, 
     deleteDoc 
 } from 'firebase/firestore';
-import { Book, Mail, AtSign, Loader, LogOut, CheckCircle, PieChart, Calendar } from 'lucide-react';
+import { Book, Mail, AtSign, Loader, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Firebase configuration provided by the user
 const firebaseConfig = {
@@ -45,6 +45,7 @@ const appCss = `
         --dark-blue: #1E3A8A;
         --subtle-blue: #102048;
         --lime-green: #BEF264;
+        --light-text: rgba(255, 255, 255, 0.7);
     }
 
     body {
@@ -98,7 +99,7 @@ const appCss = `
 
     .hero-subtitle {
         font-size: clamp(1.25rem, 2.5vw, 1.5rem);
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--light-text);
         font-weight: 500;
         margin-top: 2rem;
         opacity: 0;
@@ -157,7 +158,7 @@ const appCss = `
     .features-subtitle {
         margin-top: 1rem;
         font-size: clamp(1rem, 2vw, 1.5rem);
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--light-text);
         max-width: 48rem;
         margin-left: auto;
         margin-right: auto;
@@ -276,7 +277,7 @@ const appCss = `
     .auth-subtitle {
         font-size: 1rem;
         text-align: center;
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--light-text);
         margin-bottom: 2rem;
     }
 
@@ -348,7 +349,7 @@ const appCss = `
 
     .auth-divider-text {
         padding: 0 1rem;
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--light-text);
         font-size: 0.875rem;
     }
 
@@ -435,6 +436,81 @@ const appCss = `
     .sign-out-button:hover {
         background-color: var(--lime-green);
         color: var(--dark-bg);
+    }
+    
+    /* Calendar styles */
+    .calendar-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 1rem;
+        background-color: var(--subtle-blue);
+        border-radius: 1rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        color: var(--lime-green);
+        font-weight: bold;
+    }
+
+    .calendar-header h2 {
+        font-size: 1.5rem;
+        margin: 0;
+    }
+
+    .calendar-nav-button {
+        background: none;
+        border: none;
+        color: var(--lime-green);
+        cursor: pointer;
+        transition: transform 0.2s;
+        padding: 0.5rem;
+    }
+
+    .calendar-nav-button:hover {
+        transform: scale(1.1);
+    }
+
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0.5rem;
+    }
+
+    .calendar-day-header {
+        text-align: center;
+        font-weight: 600;
+        color: var(--light-text);
+        padding: 0.5rem 0;
+    }
+
+    .calendar-day-cell {
+        aspect-ratio: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .calendar-day-cell:not(.empty-day):hover {
+        background-color: rgba(190, 242, 100, 0.1);
+    }
+    
+    .calendar-day-cell.today {
+        background-color: var(--lime-green);
+        color: var(--dark-blue);
+        font-weight: bold;
+    }
+
+    .calendar-day-cell.empty-day {
+        background-color: transparent;
+        cursor: default;
     }
 
     /* Keyframe Animations */
@@ -714,6 +790,80 @@ const AuthUI = ({ isOpen, onClose }) => {
     );
 };
 
+// Calendar Component
+const Calendar = () => {
+    const [currentDate, setCurrentDate] = useState(new Date());
+
+    const daysInMonth = (year, month) => {
+        return new Date(year, month + 1, 0).getDate();
+    };
+
+    const firstDayOfMonth = (year, month) => {
+        return new Date(year, month, 1).getDay();
+    };
+
+    const renderCalendarDays = () => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const numDays = daysInMonth(year, month);
+        const firstDay = firstDayOfMonth(year, month);
+        const today = new Date();
+        const todayMonth = today.getMonth();
+        const todayYear = today.getFullYear();
+
+        const days = [];
+
+        // Add empty cells for days before the first of the month
+        for (let i = 0; i < firstDay; i++) {
+            days.push(<div key={`empty-${i}`} className="calendar-day-cell empty-day"></div>);
+        }
+
+        // Add the days of the month
+        for (let day = 1; day <= numDays; day++) {
+            const isToday = day === today.getDate() && month === todayMonth && year === todayYear;
+            days.push(
+                <div 
+                    key={day} 
+                    className={`calendar-day-cell ${isToday ? 'today' : ''}`}
+                    // This is a placeholder for future functionality like selecting a date
+                    onClick={() => console.log(`Clicked on ${year}-${month + 1}-${day}`)}
+                >
+                    {day}
+                </div>
+            );
+        }
+
+        return days;
+    };
+    
+    const nextMonth = () => {
+        setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() + 1, 1));
+    };
+
+    const prevMonth = () => {
+        setCurrentDate(prevDate => new Date(prevDate.getFullYear(), prevDate.getMonth() - 1, 1));
+    };
+
+    const monthName = currentDate.toLocaleString('default', { month: 'long' });
+    const year = currentDate.getFullYear();
+
+    return (
+        <div className="calendar-container">
+            <div className="calendar-header">
+                <button className="calendar-nav-button" onClick={prevMonth}><ChevronLeft size={24} /></button>
+                <h2>{monthName} {year}</h2>
+                <button className="calendar-nav-button" onClick={nextMonth}><ChevronRight size={24} /></button>
+            </div>
+            <div className="calendar-grid">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="calendar-day-header">{day}</div>
+                ))}
+                {renderCalendarDays()}
+            </div>
+        </div>
+    );
+};
+
 // Dashboard Placeholder Component
 const Dashboard = ({ user }) => {
     return (
@@ -727,7 +877,9 @@ const Dashboard = ({ user }) => {
                     </button>
                 </div>
             </header>
-            <p style={{ color: 'rgba(255,255,255,0.7)' }}>This is your dashboard. Future features like a task planner and reports will go here.</p>
+            
+            <Calendar />
+            
         </div>
     );
 };
